@@ -1,7 +1,9 @@
-import express, {Express, Request, Response} from 'express';
+import express, {Express} from 'express';
 import bodyParser from 'body-parser';
 import fs from 'fs/promises';
+import {readFileSync} from 'fs';
 import path from 'path';
+import { convertPkcs12, generateCertificate, tempfolderWrapper } from './openssl';
 
 type Client = {
     id: string;
@@ -18,10 +20,13 @@ type Client = {
     updated_at: string;
 };
 
-const config = {
-    server_port: 8080,
-    wireguard_db_path: '../db' //TODO
-};
+const config: {
+    server_port: number;
+    wireguard_db_path: string;
+    ca_cert_path: string;
+    ca_key_path: string;
+    new_cert_validity_days: number;
+} = JSON.parse(readFileSync(path.join(__dirname, '..', 'config.json')).toString('ascii'));
 
 const static_path = path.join(__dirname, '..', 'static');
 
@@ -45,12 +50,32 @@ app.get('/', async (req, res) => {
 });
 
 app.post<{}, {}, {preshared_key: string}>('/', async (req, res) => {
-    let c = await findClient(req.body.preshared_key);
-    if (c) {
-        console.log(c);
-        res.sendStatus(200);
+    let client = await findClient(req.body.preshared_key);
+    if (client) {
+        console.log(`Generating mTLS cert for "${client.name}".`);
+
+        await tempfolderWrapper(async(tempFolder) => {
+            const cert = await generateCertificate({
+                email: client!.email,
+                validityDays: config.new_cert_validity_days,
+                caCertPath: config.ca_cert_path,
+                caPrivateKeyPath: config.ca_key_path
+            }, tempFolder);
+
+            const pfx = await convertPkcs12({
+                name: client!.name,
+                caCertPath: config.ca_cert_path,
+                certPath: cert.certPath,
+                privateKeyPath: cert.privateKeyPath
+            });
+
+            res.contentType('application/x-pkcs12');
+            res.setHeader('Content-Disposition', `attachment; filename="${client!.name}.pfx"`);
+            res.send(pfx);
+        });
     } else {
-        res.send('Private key not valid');
+        console.log('Invalid input.');
+        res.send('Preshared key not valid');
     }
 });
 
