@@ -43,15 +43,18 @@ export async function tempfolderWrapper(callback: (tempFolder: string) => Promis
     }
 }
 
-async function extractCaData(caCertPath: string): Promise<{
+export async function extractCaData(caCertPath: string): Promise<{
     C?: string;
     ST?: string;
     L?: string;
     O?: string;
     emailAddress?: string;
+    notAfter?: string;
 }> {
     const caCertData = (await openssl(['x509', '-in', caCertPath, '-noout', '-text'])).data.toString();
-    const subjectLine = caCertData.split('\n').filter(s => s.indexOf('Subject:') != -1)[0];
+    const lines = caCertData.split('\n');
+    const subjectLine = lines.filter(s => s.indexOf('Subject:') != -1)[0];
+    const notAfterLine = lines.filter(s => s.indexOf('Not After :') != -1)[0];
 
     let result: {[k: string]: string} = {};
     for (const s of subjectLine.substring(subjectLine.indexOf('Subject:') + 'Subject:'.length).split(',')) {
@@ -59,6 +62,8 @@ async function extractCaData(caCertPath: string): Promise<{
         const value = s.split(' = ')[1];
         result[key] = value;
     }
+
+    result.notAfter = notAfterLine.substring(notAfterLine.indexOf(':') + 2);
     return result;
 }
 

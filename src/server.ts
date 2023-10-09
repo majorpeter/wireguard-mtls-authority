@@ -1,9 +1,9 @@
-import express, {Express} from 'express';
+import express, {Express, Response} from 'express';
 import bodyParser from 'body-parser';
 import fs from 'fs/promises';
 import {readFileSync} from 'fs';
 import path from 'path';
-import { convertPkcs12, generateCertificate, tempfolderWrapper } from './openssl';
+import { convertPkcs12, extractCaData, generateCertificate, tempfolderWrapper } from './openssl';
 
 type Client = {
     id: string;
@@ -39,13 +39,26 @@ async function findClient(preshared_key: string): Promise<Client|null> {
     return null;
 }
 
+async function renderIndex(res: Response, params: {
+    error?: string;
+    caNotAfter: string|undefined
+}) {
+    try {
+        const caLifetime = Math.floor((new Date(params.caNotAfter!).getTime() - new Date().getTime()) / (24 * 3600 * 1e3));
+        params.caNotAfter = `${caLifetime} days (expires ${params.caNotAfter})`;
+    } catch {}
+    res.render('index', params);
+}
+
 const app: Express = express();
 app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', 'ejs');
 
-app.get('/', async (req, res) => {
-    res.contentType('html');
-    res.render('index');
+app.get('/', async (req, res: Response) => {
+    const caData = await extractCaData(config.ca_cert_path);
+    await renderIndex(res, {
+        caNotAfter: caData.notAfter
+    });
 });
 
 app.post<{}, {}, {preshared_key: string}>('/', async (req, res) => {
@@ -74,7 +87,11 @@ app.post<{}, {}, {preshared_key: string}>('/', async (req, res) => {
         });
     } else {
         console.log('Invalid input.');
-        res.render('index', {error: 'The submitted key is not valid.'});
+        const caData = await extractCaData(config.ca_cert_path);
+        await renderIndex(res, {
+            error: 'The submitted key is not valid.',
+            caNotAfter: caData.notAfter
+        });
     }
 });
 
