@@ -28,8 +28,6 @@ const config: {
     new_cert_validity_days: number;
 } = JSON.parse(readFileSync(path.join(__dirname, '..', 'config.json')).toString('ascii'));
 
-const static_path = path.join(__dirname, '..', 'static');
-
 async function findClient(preshared_key: string): Promise<Client|null> {
     const dir = path.join(__dirname, config.wireguard_db_path, 'clients');
     for (let fname of await fs.readdir(dir)) {
@@ -43,10 +41,11 @@ async function findClient(preshared_key: string): Promise<Client|null> {
 
 const app: Express = express();
 app.use(bodyParser.urlencoded({extended: true}));
+app.set('view engine', 'ejs');
 
 app.get('/', async (req, res) => {
     res.contentType('html');
-    res.send(await fs.readFile(path.join(static_path, 'index.html')));
+    res.render('index');
 });
 
 app.post<{}, {}, {preshared_key: string}>('/', async (req, res) => {
@@ -75,7 +74,7 @@ app.post<{}, {}, {preshared_key: string}>('/', async (req, res) => {
         });
     } else {
         console.log('Invalid input.');
-        res.send('Preshared key not valid');
+        res.render('index', {error: 'The submitted key is not valid.'});
     }
 });
 
