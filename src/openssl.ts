@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import { spawn } from 'child_process';
 import path from 'path';
 
-const _opensslDebugEnabled = true;
+const _opensslDebugEnabled = false;
 
 async function openssl(params: string[], stdin: string|null = null): Promise<{data: Buffer, error: Buffer}> {
     return new Promise((resolve, reject) => {
