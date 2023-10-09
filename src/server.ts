@@ -29,7 +29,7 @@ const config: {
 } = JSON.parse(readFileSync(path.join(__dirname, '..', 'config.json')).toString('ascii'));
 
 async function findClient(preshared_key: string): Promise<Client|null> {
-    const dir = path.join(__dirname, config.wireguard_db_path, 'clients');
+    const dir = path.join(config.wireguard_db_path, 'clients');
     for (let fname of await fs.readdir(dir)) {
         let client = <Client> JSON.parse((await fs.readFile(path.join(dir, fname))).toString('ascii'));
         if (client.preshared_key == preshared_key) {
