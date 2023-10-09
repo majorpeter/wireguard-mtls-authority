@@ -95,4 +95,6 @@ app.post<{}, {}, {preshared_key: string}>('/', async (req, res) => {
     }
 });
 
-app.listen(config.server_port);
+app.listen(config.server_port, () => {
+    console.log(`Listening on ${config.server_port}.`);
+});
