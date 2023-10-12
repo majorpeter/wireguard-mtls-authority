@@ -1,0 +1,7 @@
+{
+    "server_port": 8080,
+    "wireguard_db_path": "/etc/db",
+    "ca_cert_path": "/etc/ca/my_ca_cert.crt",
+    "ca_key_path": "/etc/ca/my_ca_privkey.key",
+    "new_cert_validity_days": 40
+}
