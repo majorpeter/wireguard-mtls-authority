@@ -121,9 +121,8 @@ DNS.0 = ${params.email.replace('@', '.')}
         '-days', params.validityDays.toString(),
         '-extensions', 'req_ext', '-extfile', csrConfigPath,
         '-CA', params.caCertPath, '-CAkey', params.caPrivateKeyPath,
+        '-set_serial', '0',     // serial is required for OpenSSL v1 but not for v3
         '-in', csrPath, '-out', certPath]);
-
-    //console.log((await openssl(['x509', '-in', certPath, '-noout', '-text'])).data.toString('ascii'));
 
     return {
         privateKeyPath: privKeyPath,
@@ -142,6 +141,6 @@ export async function convertPkcs12(params: {
         '-inkey', params.privateKeyPath,
         '-export', '-passout', 'pass:',
         '-name', params.name,
-        '-legacy'   // required for openssl v3
+        // '-legacy'   // would be required for openssl v3
     ])).data;
 }
